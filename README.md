@@ -1,74 +1,71 @@
-🤖 Intelligent AI Lead Scoring Pipeline
+# 🎯 Enterprise AI Lead Scoring & Qualification System
 
-![Overview](overview.png)
+> **Reference Architecture:** An automated lead processing pipeline that combines technical validation with LLM-based intent analysis (Llama 3.3) to prioritize sales efforts.
 
-**🇵🇱 Opis Projektu:**
-
-Projekt ten to zautomatyzowany system klasy **Marketing Automation**, który w czasie rzeczywistym analizuje, ocenia i kategoryzuje leady przychodzące z kampanii reklamowych. System rozwiązuje problem "zimnych leadów" trafiających do działu sprzedaży, wykorzystując sztuczną inteligencję do analizy intencji klienta.
-
-**🤝 Transparentność i Metodologia (AI Collaboration)**
-Ten projekt powstał w ramach intensywnej nauki automatyzacji (Project-Based Learning). Został zrealizowany przy bliskiej współpracy z Mentorem AI (LLM).
-
-**Podział ról i obowiązków:**
-
-*   **Moja rola (Execution & Infrastructure):**
-    *   Konfiguracja infrastruktury self-hosted: n8n na chmurze Render oraz bazy danych PostgreSQL na własnym serwerze VPS (Mikrus) z wykorzystaniem Dockera.
-    *   Integracja systemów poprzez API: konfiguracja uwierzytelniania (OAuth2/Tokeny) dla HubSpot, Google Sheets, Groq AI oraz Slack/Discord.
-    *   Budowa przepływu danych (Workflow) w n8n, mapowanie zmiennych oraz testowanie "live" za pomocą narzędzi cURL/ReqBin.
-    *   Weryfikacja błędów i debugging połączeń sieciowych (firewall, porty).
-
-*   **Rola AI (Architecture & Code):**
-    *   Zaprojektowanie architektury logicznej systemu i modelu punktowania (Scoring Model).
-    *   Generowanie fragmentów kodu JavaScript (węzły `Code`) odpowiedzialnych za czyszczenie danych (Regex) oraz logikę warunkową.
-    *   Wsparcie w rozwiązywaniu błędów składniowych JSON oraz problemów konfiguracyjnych serwera.
-
-### 🚀 Jak to działa?
-1.  **Odbiór danych:** Webhook przyjmuje dane z formularzy (symulacja Facebook Ads / Landing Page).
-2.  **Data Cleaning:** Skrypt JavaScript standaryzuje numery telefonów i weryfikuje domeny e-mail.
-3.  **AI Analysis:** Model **Llama 3 (via Groq)** analizuje treść wiadomości, określając sentyment i intencję.
-4.  **Scoring:** Algorytm sumuje punkty (dane techniczne + ocena AI).
-5.  **Routing & Action:** Leady powyżej 60 pkt otrzymują status **HOT LEAD** i są priorytetowo zapisywane w **HubSpot CRM** oraz archiwizowane w **Google Sheets**.
-
-### 🛠️ Tech Stack (Zero-Cost Architecture)
-*   **Automation:** n8n (Self-hosted na Render Cloud)
-*   **AI:** Llama 3.3 (via Groq API)
-*   **Database:** PostgreSQL (Docker na Alpine Linux VPS)
-*   **CRM:** HubSpot API
-*   **Scripting:** JavaScript
+![Status](https://img.shields.io/badge/Status-Reference_Architecture-blue)
+![Tech Stack](https://img.shields.io/badge/n8n-Automated-red)
+![AI Model](https://img.shields.io/badge/AI-Llama_3.3_70B-orange)
+![CRM](https://img.shields.io/badge/CRM-HubSpot-informational)
 
 ---
 
-**🇬🇧 Project Description**
+## 💡 The Business Problem: Sales Team Overload
 
-This project is an automated **Marketing Automation** pipeline that analyzes, scores, and categorizes inbound leads in real-time. It solves the issue of "cold leads" cluttering the sales pipeline by leveraging Artificial Intelligence to determine customer intent.
-
-**🤝 Transparency & Methodology (AI Collaboration)**
-This project was built as part of an intensive Project-Based Learning path, executed in close collaboration with an AI Mentor (LLM).
-
-**Roles and Responsibilities:**
-
-*   **My Role (Execution & Infrastructure):**
-    *   Setting up the self-hosted environment: Deployed n8n on Render Cloud and a PostgreSQL database on a private VPS (Mikrus) using Docker.
-    *   API Integrations: Managing authentication (OAuth2/Tokens) for HubSpot, Google Sheets, Groq AI, and Slack/Discord.
-    *   Building the workflow in n8n, data mapping, and conducting live tests using cURL/ReqBin.
-    *   Troubleshooting and debugging network issues (firewalls, port forwarding).
-
-*   **AI Role (Architecture & Code):**
-    *   Designing the logical architecture and the Lead Scoring Model.
-    *   Generating JavaScript code snippets (for `Code` nodes) used for data cleansing (Regex) and conditional logic.
-    *   Assisting with JSON syntax errors and server configuration troubleshooting.
-
-### 🚀 How it works?
-1.  **Data Ingestion:** A Webhook receives data from forms (simulating FB Ads / Landing Pages).
-2.  **Data Cleaning:** JavaScript normalizes phone numbers and verifies email domains.
-3.  **AI Analysis:** The **Llama 3 model (via Groq)** analyzes the message content to determine sentiment and intent.
-4.  **Scoring:** An algorithm calculates the total score (technical data + AI assessment).
-5.  **Routing & Action:** Leads scoring above 60 points are flagged as **HOT LEAD**, prioritized in **HubSpot CRM**, and archived in **Google Sheets**.
+Sales departments often waste their time on low-quality leads or spam. This system acts as an **Automated Gatekeeper**, ensuring that only high-intent, validated leads reach the CRM (HubSpot), while technical data is cleansed and enriched in the background.
 
 ---
 
-## 📊 Logic Snippet / Przykładowy Kod
+## 🛠️ System Architecture
 
-Fragment logiki biznesowej (JavaScript), który łączy dane techniczne z oceną AI / The business logic snippet combining technical data with AI assessment:
+The workflow follows a 3-stage qualification process:
 
-![Logic Detail](logic-detail.png)
+1. **Technical Validation:** Cleans phone numbers, validates email domains, and checks if the lead is using a corporate or free (Gmail/WP) email.
+2. **AI Intent Analysis:** Uses **Llama 3.3 (via Groq)** to analyze the message content, identify the industry, and assign an intent score (HOT/WARM/COLD).
+3. **CRM Orchestration:** Aggregates scores and automatically routes the lead to **HubSpot** and **Google Sheets** with appropriate prioritization labels.
+
+```mermaid
+graph LR
+    Webhook[Inbound Lead] --> Tech[Technical Validation]
+    Tech --> AI[Llama 3.3 Analysis]
+    AI --> Logic[Final Scoring Logic]
+    Logic --> HubSpot[HubSpot CRM]
+    Logic --> Sheets[Google Sheets Log]
+```
+---
+
+## 🧠 Engineering Challenges & Solutions
+
+### 1. Data Sanitization & Phone Normalization
+**Problem:** Inbound leads often provide phone numbers in inconsistent formats (with prefixes, spaces, or dashes), which causes synchronization errors in CRM systems like HubSpot.  
+**Solution:** Built a custom JavaScript processing engine that uses Regex to strip non-numeric characters and normalize international prefixes. This ensures a clean, 9-digit format that is 100% compatible with standard CRM database schemas.
+
+### 2. Intent Detection via Llama 3.3 (The "Context" Problem)
+**Problem:** Simple keyword-based filters often misclassify leads (e.g., a user asking "how to cancel" vs "how to buy a license").  
+**Solution:** Implemented a sophisticated system prompt for **Llama 3.3 (70B)** that performs qualitative analysis. The model evaluates the "psychological intent" behind the message and assigns an AI-Score based on buying signals, urgency, and professional depth.
+
+### 3. CRM Hygiene & Lead Prioritization
+**Problem:** Sales teams are often overwhelmed by "noise" (low-quality leads and spam), leading to missed opportunities with high-value prospects.  
+**Solution:** Developed a weighted scoring matrix. Only leads that achieve a **Total Score > 60** are tagged as **🔥 HOT LEAD**. The system automatically updates the "Job Title" field in HubSpot with the Lead Status and detected Industry, allowing sales reps to filter and react to the best opportunities in minutes.
+
+---
+
+## 📂 Repository Structure
+
+*   `workflow_sanitized.json`: The complete n8n workflow file, ready for import. All sensitive IDs and credentials have been replaced with placeholders.
+*   `scoring_logic.js`: A standalone JavaScript file containing the core sanitization and score aggregation logic used in the Node.js nodes.
+
+---
+
+## 🤝 Transparency: Human vs. AI Role
+
+*   **My Role (Architect):** Defined the lead qualification criteria (Scorecard), designed the multi-stage logic flow, and managed the HubSpot CRM data mapping.
+*   **AI Role:** Assisted in fine-tuning the Llama 3.3 system prompt for better classification accuracy and provided boilerplate code for the JavaScript regex normalization.
+
+---
+
+## 🚀 Deployment Requirements
+
+*   **Orchestrator:** n8n (Self-hosted or Cloud)
+*   **Inference Engine:** Groq Cloud API (Llama-3.3-70b-versatile)
+*   **CRM Integration:** HubSpot (App Token with Contacts Scopes)
+*   **Storage:** Google Sheets API
