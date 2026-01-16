@@ -1,0 +1,98 @@
+{
+  "name": "Enterprise AI Lead Scoring & CRM Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-inbound",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "webhook_entry",
+      "name": "Lead Inbound Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Technical Validation Logic\nconst body = $input.item.json.body;\nconst email = body.email || \"\";\nconst phoneInput = body.phone || body.telephone || \"\";\n\nlet cleanPhone = phoneInput.replace(/\\D/g, '');\nif (cleanPhone.length === 11 && cleanPhone.startsWith('48')) {\n  cleanPhone = cleanPhone.substring(2);\n}\nconst isPhoneValid = cleanPhone.length === 9;\n\nconst freeDomains = ['gmail.com', 'wp.pl', 'onet.pl', 'interia.pl', 'o2.pl', 'outlook.com', 'yahoo.com'];\nconst emailParts = email.split('@');\nlet domain = \"\";\nlet isFreeEmail = true;\n\nif (emailParts.length === 2) {\n  domain = emailParts[1].toLowerCase();\n  isFreeEmail = freeDomains.includes(domain);\n}\n\nlet techScore = isPhoneValid ? 15 : 0;\ntechScore += isFreeEmail ? 5 : 35;\n\nreturn {\n  json: {\n    ...body,\n    cleanPhone,\n    domain,\n    isFreeEmail,\n    techScore,\n    isPhoneValid\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "id": "tech_validation",
+      "name": "Technical Validation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a B2B Lead Qualification Expert. Analyze the message.\\nTasks:\\n1. Evaluate intent (HOT/WARM/COLD).\\n2. Assign points (0-50). High intent ('urgent', 'quote', 'buy') = 40-50. General questions = 20-30. Spam = 0.\\n3. Identify Industry.\\n\\nOutput JSON only: {\\\"ai_points\\\": 0, \\\"intent\\\": \\\"...\\\", \\\"industry\\\": \\\"...\\\", \\\"summary\\\": \\\"...\\\"}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Message: {{ $json.wiadomosc }}\\nEmail Domain: {{ $json.domain }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [440, 0],
+      "id": "ai_analysis",
+      "name": "AI Intent Analysis"
+    },
+    {
+      "parameters": {
+        "jsCode": "const techData = $('Technical Validation').first().json; \nconst aiResponse = $('AI Intent Analysis').first().json.choices[0].message.content;\nconst aiData = JSON.parse(aiResponse);\n\nconst finalScore = techData.techScore + aiData.ai_points;\nlet label = \"❄️ COLD LEAD\";\n\nif (finalScore >= 60) label = \"🔥 HOT LEAD\";\nelse if (finalScore >= 30) label = \"🌤️ WARM LEAD\";\n\nreturn {\n  json: {\n    email: techData.email,\n    phone: techData.cleanPhone,\n    company: techData.domain,\n    industry: aiData.industry,\n    intent: aiData.intent,\n    summary: aiData.summary,\n    TOTAL_SCORE: finalScore,\n    STATUS: label\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "id": "scoring_aggregator",
+      "name": "Scoring Aggregator"
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "jobTitle": "={{ $json.STATUS }} | {{ $json.industry }}",
+          "phoneNumber": "={{ $json.phone }}"
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [880, 0],
+      "id": "hubspot_sync",
+      "name": "HubSpot CRM Sync"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "YOUR_SPREADSHEET_ID", "mode": "list" },
+        "sheetName": { "__rl": true, "value": "gid=0", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now.format('yyyy-MM-dd HH:mm') }}",
+            "Email": "={{ $json.email }}",
+            "Score": "={{ $json.TOTAL_SCORE }}",
+            "Status": "={{ $json.STATUS }}",
+            "Summary": "={{ $json.summary }}"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1100, 0],
+      "id": "gsheet_log",
+      "name": "Google Sheets Logger"
+    }
+  ],
+  "connections": {
+    "Lead Inbound Webhook": { "main": [[{ "node": "Technical Validation", "type": "main", "index": 0 }]] },
+    "Technical Validation": { "main": [[{ "node": "AI Intent Analysis", "type": "main", "index": 0 }]] },
+    "AI Intent Analysis": { "main": [[{ "node": "Scoring Aggregator", "type": "main", "index": 0 }]] },
+    "Scoring Aggregator": { "main": [[{ "node": "HubSpot CRM Sync", "type": "main", "index": 0 }]] },
+    "HubSpot CRM Sync": { "main": [[{ "node": "Google Sheets Logger", "type": "main", "index": 0 }]] }
+  }
+}
