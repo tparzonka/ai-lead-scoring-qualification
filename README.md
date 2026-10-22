@@ -45,7 +45,7 @@ graph LR
 
 ### 3. CRM Hygiene & Lead Prioritization
 **Problem:** Sales teams are often overwhelmed by "noise" (low-quality leads and spam), leading to missed opportunities with high-value prospects.  
-**Solution:** Developed a weighted scoring matrix. Only leads that achieve a **Total Score > 60** are tagged as **🔥 HOT LEAD**. The system automatically updates the "Job Title" field in HubSpot with the Lead Status and detected Industry, allowing sales reps to filter and react to the best opportunities in minutes.
+**Solution:** Developed a weighted scoring matrix. Only leads that achieve a **Total Score ≥ 60** are tagged as **🔥 HOT LEAD**. The system automatically updates the "Job Title" field in HubSpot with the Lead Status and detected Industry, allowing sales reps to filter and react to the best opportunities in minutes.
 
 ---
 
@@ -60,6 +60,15 @@ graph LR
 
 *   **My Role (Architect):** Defined the lead qualification criteria (Scorecard), designed the multi-stage logic flow, and managed the HubSpot CRM data mapping.
 *   **AI Role:** Assisted in fine-tuning the Llama 3.3 system prompt for better classification accuracy and provided boilerplate code for the JavaScript regex normalization.
+
+---
+
+## ⚡ Quick Start
+
+1. In n8n, open **Workflows → Import from file** and select `workflow_sanitized.json`.
+2. Add your credentials: a Groq API key for the `AI Intent Analysis` node, a HubSpot app token for `HubSpot CRM Sync`, and Google Sheets access for `Google Sheets Logger`.
+3. Replace `YOUR_SPREADSHEET_ID` with your own log sheet.
+4. Activate the workflow and point your form's webhook at the `Lead Inbound Webhook` URL. The scoring rules also live in `scoring_logic.js` if you want to test them outside n8n.
 
 ---
 
